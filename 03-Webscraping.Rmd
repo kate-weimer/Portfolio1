@@ -1,0 +1,151 @@
+---
+title: "Snow Data Assignment: Web Scraping, Functions, and Iteration"
+author: "Kate Weimer"
+date: "2-10-2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(rvest)
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(rvest)
+
+```
+
+# 3: Webscraping and Iterations
+
+## Assignment:
+
+1. Extract the meteorological data URLs. Here we want you to use the `rvest` package to get the URLs for the `SASP forcing` and `SBSP_forcing` meteorological datasets.c
+
+```{r, message = FALSE}
+datapath = 'data/'
+dir.create(datapath)
+
+```
+
+
+```{r}
+site_url <- 'https://snowstudies.org/archived-data/'
+
+#Read the web url
+webpage <- read_html(site_url)
+
+links <- webpage %>%
+  html_nodes('a') %>%
+  .[grepl('forcing',.)] %>%
+  html_attr('href')
+
+#Grab only the name of the file by splitting out on forward slashes
+splits <- str_split_fixed(links,'/',8)
+
+#Keep only the 8th column
+dataset <- splits[,8] 
+
+# view(dataset)
+
+file_names <- paste0(datapath,dataset)
+
+```
+
+
+2. Download the meteorological data. Use the `download_file` and `str_split_fixed` commands to download the data and save it in your data folder. You can use a for loop or a map function. 
+
+```{r, message = FALSE}
+#generate a file list for where the data goes
+file_names <- paste0('data/',dataset)
+
+for(i in 1:2){
+  download.file(links[i],destfile=file_names[i])
+}
+
+downloaded <- file.exists(file_names)
+
+evaluate <- !all(downloaded)
+```
+
+3. Write a custom function to read in the data and append a site column to the data. 
+
+```{r}
+
+# this code grabs the variable names from the metadata pdf file
+library(pdftools)
+headers <- pdf_text('https://snowstudies.org/wp-content/uploads/2022/02/Serially-Complete-Metadata-text08.pdf') %>%
+  readr::read_lines(.) %>%
+  trimws(.) %>%
+  str_split_fixed(.,'\\.',2) %>%
+  .[,2] %>%
+  .[1:26] %>%
+  str_trim(side = "left")
+
+```
+
+
+```{r}
+read_in_weatherdata <- function(file){
+name = str_split_fixed(file,'_',3)[,2] 
+   df <- read.delim(file, header = F, sep = "", skip =4) %>%  mutate(site = name)
+return(df)
+}
+
+```
+
+
+4. Use the `map` function to read in both meteorological files. Display a summary of your tibble.
+```{r, message= FALSE}
+setwd("~/Spring 2022/ESS580/3_snow_functions_iteration/data")
+weather_data_full <- map_dfr(dataset, read_in_weatherdata) 
+
+weather_data_full <- select(weather_data_full, V1, V2, V10, site)%>% rename(Year = V1, Month = V2, temp = V10)
+
+summary(weather_data_full)
+
+```
+
+5. Make a line plot of mean temp by year by site (using the `air temp [K]` variable). Is there anything suspicious in the plot? Adjust your filtering if needed.
+
+```{r, warning= FALSE, message= FALSE}
+weather_data_yearlymean <- weather_data_full %>% group_by(Year,site) %>% filter(Year != 2003, Year != 2011) %>% summarize(meantemp = mean(temp))
+```
+
+
+```{r}
+ggplot(weather_data_yearlymean, aes(x = Year, y = meantemp, color = site )) +
+  geom_line() +
+  labs( x = "Year", y = "Mean Temperature (K)")
+```
+
+The dataset only included parts of 2003 and 2011, which skewed the yearly average for both years. 
+
+6. Write a function that makes line plots of monthly average temperature at each site for a given year. Use a for loop to make these plots for 2005 to 2010. Are monthly average temperatures at the Senator Beck Study Plot ever warmer than the Snow Angel Study Plot?
+Hint: https://ggplot2.tidyverse.org/reference/print.ggplot.html
+
+
+```{r}
+# create a function
+yearly_plotter <- function(df, year){
+  
+  monthly_mean <- df  %>% 
+    group_by(Year, Month, site) %>% 
+    summarize(meantemp = mean(temp)) %>% filter(year == Year) 
+  
+   
+  figure <- ggplot(monthly_mean, aes(x = Month, y = meantemp, color = site )) +
+  geom_line() +
+  labs( x = "Month", y = "Mean Temperature (K)") 
+
+  
+  print(figure)
+}
+```
+
+```{r, message= FALSE}
+# run the function in a for loop
+
+x <- c(2005, 2006, 2007, 2008, 2009, 2010)
+
+for(year in x){(yearly_plotter(weather_data_full, year))}
+```
+

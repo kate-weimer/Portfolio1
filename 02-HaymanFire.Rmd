@@ -1,0 +1,163 @@
+---
+title: "Hayman Fire Recovery"
+author: "Kate Weimer"
+date: "02/07/2022"
+output: html_document
+---
+
+```{r setup, warning=F,message=F}
+library(tidyverse)
+library(tidyr)
+library(ggthemes)
+library(lubridate)
+
+# Now that we have learned how to munge (manipulate) data
+# and plot it, we will work on using these skills in new ways
+
+knitr::opts_knit$set(root.dir='..')
+```
+
+
+```{r dataread, warning=F,message=F}
+
+#Reading in files
+files <- list.files('../data',full.names=T)
+
+
+#Read in individual data files
+ndmi <- read_csv(files[1]) %>% 
+  rename(burned=2,unburned=3) %>%
+  mutate(data='ndmi')
+
+
+ndsi <- read_csv(files[2]) %>% 
+  rename(burned=2,unburned=3) %>%
+  mutate(data='ndsi')
+
+ndvi <- read_csv(files[3])%>% 
+  rename(burned=2,unburned=3) %>%
+  mutate(data='ndvi')
+
+# Stack as a tidy dataset
+full_long <- rbind(ndvi,ndmi,ndsi) %>%
+  gather(key='site',value='value',-DateTime,-data) %>%
+  filter(!is.na(value))
+
+
+```
+
+# 2: Hayman Fire
+
+
+## Question 1) 
+
+What is the correlation between NDVI and NDMI? - here I want you to
+convert the full_long dataset in to a wide dataset using the 
+function "spread" and then make a plot that shows the correlation s a
+function of if the site was burned or not (x axis should be ndmi)
+You should exclude winter months and focus on summer months
+
+```{r}
+wide1 <- spread(full_long, data, value) %>% mutate(month=month(DateTime)) %>% filter(month %in% c(5,6,7,8,9))
+
+ggplot(wide1, aes(x = ndmi,y = ndvi,color=site)) +
+  geom_point(shape=1) + 
+  labs( x = "NDMI", y= "NDVI")
+```
+
+There is a positive correlation between Normalized Difference Moisure Index (NDMI) and Normalized Difference Vegetation Index (NDVI). Unburned sites tend to have greater NDMI and NDVI relative to burned sites. 
+
+
+## Question 2 
+
+2) What is the correlation between average NDSI (normalized
+ snow index) for January - April and average NDVI for June-August?
+In other words, does the previous year's snow cover influence vegetation
+ growth for the following summer?
+ 
+```{r}
+wide2 <- spread(full_long, data, value) %>% mutate(month=month(DateTime), year = year(DateTime)) 
+
+wide2$season <- ifelse(wide2$month %in% c(1,2,3,4), paste("winter"), 
+                ifelse(wide2$month %in% c(6, 7, 8), paste("summer"), paste("other")))
+
+
+wide2 <- filter(wide2, season != "other") %>% group_by(year, season) %>%
+ summarize(mean_NDVI=mean(ndvi), mean_NDSI = mean(ndsi)) %>% filter(!is.na(mean_NDVI),
+         !is.na(mean_NDSI))
+
+
+winter_ndsi <-filter(wide2, season == "winter") %>% select( -mean_NDVI )
+summer_ndvi <-filter(wide2, season == "summer") %>% select( -mean_NDSI )
+
+q2_wide <- inner_join(winter_ndsi, summer_ndvi, by = "year")
+
+ggplot(q2_wide, aes(x= mean_NDSI, y = mean_NDVI)) + 
+  geom_point(shape=2, color="red") + 
+  geom_smooth(method =lm, color="black") +
+  labs( x = "Jan- April NDSI", y= "Jun- Aug NDVI")
+```
+ 
+There is a weak positive correlation between the Normalized Difference Snow Index (NDSI) in winter and the Normalized Difference Vegetation Index (NDVI) in the summer of the same year. 
+
+## Q3
+
+How is the snow effect from question 2 different between pre- and post-burn
+and burned and unburned? 
+
+```{r}
+
+wide3 <- spread(full_long, data, value) %>% mutate(month=month(DateTime), year=year(DateTime))%>% mutate(site_type = ifelse((site == 'unburned'),'unburned',ifelse((year(DateTime) >= 2002), 'post burn', 'pre burn')))
+
+
+ wide3$season <- ifelse(wide3$month %in% c(1,2,3,4), paste("winter"), 
+                ifelse(wide3$month %in% c(6, 7, 8), paste("summer"), paste("other")))
+
+
+wide3 <- filter(wide3, season != "other") %>% group_by(year, season, site_type) %>%
+ summarize(mean_NDVI=mean(ndvi), mean_NDSI = mean(ndsi)) %>% filter(!is.na(mean_NDVI),
+         !is.na(mean_NDSI))
+
+winter_ndsi3 <-filter(wide3, season == "winter") %>% select( -mean_NDVI )
+summer_ndvi3 <-filter(wide3, season == "summer") %>% select( -mean_NDSI )
+
+q3_wide <- winter_ndsi3 %>% inner_join(summer_ndvi3 , by = c("year", "site_type") )
+
+ggplot(q3_wide, aes(x= mean_NDSI, y = mean_NDVI, color = site_type)) + 
+  geom_point(shape=17, size =4) + 
+  labs( x = "Jan- April NDSI", y= "Jun- Aug NDVI", color = "Site Type")
+
+```
+
+The snow effect is less pronounced for burned sites, and burned sites tend to have lower summer NDVI than unburned sites, even when the NDSI is comparable. 
+
+## Question 4
+
+What month is the greenest month on average? 
+
+```{r}
+wide4 <- spread(full_long, data, value) %>% mutate(month=month(DateTime)) %>%
+  group_by(month) %>% filter(!is.na(ndvi)) %>%
+ summarize(mean_NDVI = mean(ndvi) )
+
+max(wide4$mean_NDVI)
+```
+
+On average, August is the greenest month, with mean NDVI of 0.3871568.
+
+## Question 5) 
+
+What month is the snowiest on average?
+
+```{r}
+wide5 <- spread(full_long, data, value) %>% mutate(month=month(DateTime)) %>%
+  group_by(month) %>% filter(!is.na(ndsi)) %>%
+ summarize(mean_NDSI = mean(ndsi) )
+
+max(wide5$mean_NDSI)
+```
+January is on average the snowiest month, with mean NDSI of 0.2099584.
+
+
+
+

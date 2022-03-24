@@ -1,9 +1,11 @@
 --- 
-title: "YOUR TITLE HERE"
-author: "YOUR NAME HERE"
+title: "ESS580: Bookdown Portfolio"
+author: "Kate Weimer"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
 ---
 
-# Down the rabbit-hole
+# Description
+This is a compilation of five homework assignments completed in Spring 2022 for ESS 580: Ecological Data Science. 
 
+```
