@@ -1,5 +1,5 @@
 --- 
-title: "ESS580: Bookdown Portfolio"
+title: 'ESS580: Bookdown Portfolio'
 author: "Kate Weimer"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
