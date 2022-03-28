@@ -5,8 +5,8 @@ date: "3/4/2022"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup5, include=FALSE}
+
 library(tidyverse)
 library(R.matlab)
 library(rnassqs)

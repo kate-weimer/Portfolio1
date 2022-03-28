@@ -8,12 +8,6 @@ static-data-plotter
 interactive-data-plotter
 dygraph-example.
 poudre-paragraph
-hayman-fire
-question-1
-question-2
-q3
-question-4
-question-5
 webscraping-and-iterations
 assignment
 lagos-analysis

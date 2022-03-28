@@ -1,23 +1,13 @@
----
-title: "Discharge Data Example"
-author: "Matthew Ross, Kate Weimer"
-date: "Last compiled on `r format(Sys.time(), '%d %B, %Y')`"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    toc_depth: 2
----
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
+```{r}
 library(tidyverse)
 library(dataRetrieval)
 library(dygraphs)
 library(xts)
 library(yaml)
 ```
+
+
 
 # 1: Discharge Example
 
